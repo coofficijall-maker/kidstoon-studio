@@ -9,8 +9,8 @@ from moviepy.audio.AudioClip import AudioClip
 
 WIDTH, HEIGHT = 1920, 1080
 FPS = 30
-NASLOV_EPIZODE = "EPIZODA 02: UČIMO BROJEVE"
-IZLAZNI_FAJL = "Epizoda_02_FullHD.mp4"
+NASLOV_EPIZODE = "EPIZODA 03: ŽUĆO I PLAVKO"
+IZLAZNI_FAJL = "Epizoda_03_Animirana.mp4"
 
 def ucitaj_font(velicina):
     for putanja in ["/system/fonts/Roboto-Bold.ttf", "/system/fonts/DroidSans-Bold.ttf"]:
@@ -18,62 +18,116 @@ def ucitaj_font(velicina):
             return ImageFont.truetype(putanja, velicina)
     return ImageFont.load_default()
 
-def kreiraj_karticu(naslov, podnaslov, boja_pozadine, fajl, trajanje=3.5):
-    img = Image.new("RGB", (WIDTH, HEIGHT), boja_pozadine)
-    draw = ImageDraw.Draw(img)
-    f_veliki = ucitaj_font(90)
-    f_mali = ucitaj_font(48)
-    
-    b1 = draw.textbbox((0, 0), naslov, font=f_veliki)
-    draw.text(((WIDTH - (b1[2] - b1[0])) // 2, HEIGHT // 2 - 90), naslov, font=f_veliki, fill=(255, 255, 255))
-    
-    b2 = draw.textbbox((0, 0), podnaslov, font=f_mali)
-    draw.text(((WIDTH - (b2[2] - b2[0])) // 2, HEIGHT // 2 + 40), podnaslov, font=f_mali, fill=(255, 230, 80))
-    
-    img.save(fajl)
-    return ImageClip(fajl).set_duration(trajanje).fadein(0.5).fadeout(0.5)
-
-def kreiraj_pozadinu(putanja="pozadina_hd.png"):
+# --- 1. SLOJEVITA POZADINA I POKRETNI OBLACI ---
+def pripremi_grafiku_scene():
+    # Nebo i trava (bez oblaka, jer se oblaci sada posebno animiraju)
     img = Image.new("RGB", (WIDTH, HEIGHT), (115, 205, 255))
     draw = ImageDraw.Draw(img)
     draw.ellipse((1550, 80, 1780, 310), fill=(255, 225, 50), outline=(255, 190, 0), width=8)
-    for cx, cy in [(250, 180), (850, 140), (1250, 230)]:
-        draw.ellipse((cx, cy, cx+220, cy+110), fill=(255, 255, 255))
-        draw.ellipse((cx+60, cy-40, cx+260, cy+100), fill=(255, 255, 255))
-        draw.ellipse((cx+130, cy+10, cx+320, cy+110), fill=(255, 255, 255))
     draw.ellipse((-200, 680, 1100, 1200), fill=(76, 187, 23))
     draw.ellipse((700, 650, 2200, 1200), fill=(60, 165, 20))
     draw.rectangle((0, 820, WIDTH, HEIGHT), fill=(50, 155, 25))
-    img.save(putanja)
+    img.save("pozadina_baza.png")
 
-def kreiraj_lika(putanja="lik_hd.png"):
-    img = Image.new("RGBA", (320, 320), (0, 0, 0, 0))
+    # Poseban sloj prozirnih oblaka koji će se kretati
+    oblaci = Image.new("RGBA", (WIDTH, 400), (0, 0, 0, 0))
+    odraw = ImageDraw.Draw(oblaci)
+    for cx, cy in [(150, 100), (750, 60), (1350, 130)]:
+        odraw.ellipse((cx, cy, cx+220, cy+110), fill=(255, 255, 255, 230))
+        odraw.ellipse((cx+60, cy-40, cx+260, cy+100), fill=(255, 255, 255, 230))
+        odraw.ellipse((cx+130, cy+10, cx+320, cy+110), fill=(255, 255, 255, 230))
+    oblaci.save("oblaci_sloj.png")
+
+# --- 2. GENERISANJE STANJA LIKA (Oči otvorene/zatvorene, Usta otvorena/zatvorena) ---
+def nacrtaj_stanje_lika(boja_tijela, otvorena_usta, zatvorene_oci, smjer_desno, fajl):
+    img = Image.new("RGBA", (340, 340), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    draw.ellipse((20, 20, 300, 300), fill=(255, 200, 0), outline=(40, 40, 40), width=8)
-    draw.ellipse((95, 100, 145, 150), fill=(255, 255, 255), outline=(0, 0, 0), width=4)
-    draw.ellipse((175, 100, 225, 150), fill=(255, 255, 255), outline=(0, 0, 0), width=4)
-    draw.ellipse((112, 115, 132, 135), fill=(0, 0, 0))
-    draw.ellipse((192, 115, 212, 135), fill=(0, 0, 0))
-    draw.arc((100, 140, 220, 240), start=15, end=165, fill=(0, 0, 0), width=8)
-    draw.ellipse((65, 165, 105, 195), fill=(255, 120, 120, 180))
-    draw.ellipse((215, 165, 255, 195), fill=(255, 120, 120, 180))
-    img.save(putanja)
+    
+    # Tijelo
+    draw.ellipse((20, 20, 320, 320), fill=boja_tijela, outline=(35, 35, 35), width=8)
+    
+    # Oči
+    if zatvorene_oci:
+        draw.line((95, 130, 145, 130), fill=(0, 0, 0), width=6)
+        draw.line((195, 130, 245, 130), fill=(0, 0, 0), width=6)
+    else:
+        draw.ellipse((95, 100, 145, 150), fill=(255, 255, 255), outline=(0, 0, 0), width=4)
+        draw.ellipse((195, 100, 245, 150), fill=(255, 255, 255), outline=(0, 0, 0), width=4)
+        pomak_zjenice = 8 if smjer_desno else -8
+        draw.ellipse((112+pomak_zjenice, 115, 132+pomak_zjenice, 135), fill=(0, 0, 0))
+        draw.ellipse((212+pomak_zjenice, 115, 232+pomak_zjenice, 135), fill=(0, 0, 0))
+        
+    # Usta (Lip-sync)
+    if otvorena_usta:
+        draw.ellipse((135, 175, 205, 235), fill=(180, 20, 40), outline=(0, 0, 0), width=5)
+        draw.chord((145, 195, 195, 230), start=0, end=180, fill=(255, 120, 140))
+    else:
+        draw.arc((120, 155, 220, 230), start=15, end=165, fill=(0, 0, 0), width=7)
+        
+    img.save(fajl)
 
-def kreiraj_titl(tekst, trajanje, indeks):
+def pripremi_likove():
+    # Žućo (gleda desno prema Plavku)
+    nacrtaj_stanje_lika((255, 205, 0), False, False, True, "zuco_idle.png")
+    nacrtaj_stanje_lika((255, 205, 0), True, False, True, "zuco_talk.png")
+    nacrtaj_stanje_lika((255, 205, 0), False, True, True, "zuco_blink.png")
+    # Plavko (gleda lijevo prema Žući)
+    nacrtaj_stanje_lika((70, 160, 255), False, False, False, "plavko_idle.png")
+    nacrtaj_stanje_lika((70, 160, 255), True, False, False, "plavko_talk.png")
+    nacrtaj_stanje_lika((70, 160, 255), False, True, False, "plavko_blink.png")
+
+# --- 3. DINAMIČKA ANIMACIJA LIKA PO FREJMOVIMA ---
+def animiraj_lika_klip(prefiks, prica, trajanje, baza_x, baza_y):
+    img_idle = np.array(Image.open(f"{prefiks}_idle.png"))
+    img_talk = np.array(Image.open(f"{prefiks}_talk.png"))
+    img_blink = np.array(Image.open(f"{prefiks}_blink.png"))
+
+    def make_frame(t):
+        # Treptanje svake 3 sekunde u trajanju od 0.15s
+        if (t % 3.0) > 2.85:
+            return img_blink[:, :, :3]
+        # Otvaranje i zatvaranje usta 5 puta u sekundi dok lik govori
+        if prica and (int(t * 10) % 2 == 0):
+            return img_talk[:, :, :3]
+        return img_idle[:, :, :3]
+
+    def make_mask(t):
+        if (t % 3.0) > 2.85:
+            return img_blink[:, :, 3] / 255.0
+        if prica and (int(t * 10) % 2 == 0):
+            return img_talk[:, :, 3] / 255.0
+        return img_idle[:, :, 3] / 255.0
+
+    klip = VideoClip(make_frame, duration=trajanje)
+    maska = VideoClip(make_mask, ismask=True, duration=trajanje)
+    klip = klip.set_mask(maska)
+
+    # Skakutanje samo za lika koji trenutno priča, lagano disanje za onog koji sluša
+    def pozicija(t):
+        if prica:
+            dy = abs(math.sin(t * 8)) * 40
+        else:
+            dy = math.sin(t * 2) * 6
+        return (baza_x, int(baza_y - dy))
+
+    return klip.set_position(pozicija)
+
+def kreiraj_titl(ime_lika, tekst, trajanje, indeks):
     img = Image.new("RGBA", (WIDTH, 200), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    font = ucitaj_font(52)
-    bbox = draw.textbbox((0, 0), tekst, font=font)
-    tw = bbox[2] - bbox[0]
-    x = (WIDTH - tw) // 2
+    font = ucitaj_font(48)
+    puni_tekst = f"{ime_lika}: {tekst}"
+    bbox = draw.textbbox((0, 0), puni_tekst, font=font)
+    x = (WIDTH - (bbox - bbox)) // 2
     y = 50
     for dx in [-3, 0, 3]:
         for dy in [-3, 0, 3]:
-            draw.text((x+dx, y+dy), tekst, font=font, fill=(0, 0, 0, 255))
-    draw.text((x, y), tekst, font=font, fill=(255, 255, 255, 255))
+            draw.text((x+dx, y+dy), puni_tekst, font=font, fill=(0, 0, 0, 255))
+    boja_teksta = (255, 235, 100, 255) if ime_lika == "ŽUĆO" else (150, 220, 255, 255)
+    draw.text((x, y), puni_tekst, font=font, fill=boja_teksta)
     titl_path = f"temp_titl_{indeks}.png"
     img.save(titl_path)
-    return ImageClip(titl_path).set_duration(trajanje).set_position(("center", HEIGHT - 220))
+    return ImageClip(titl_path).set_duration(trajanje).set_position(("center", HEIGHT - 200))
 
 def generisi_muziku(trajanje):
     note = np.array([261.63, 329.63, 392.00, 523.25, 392.00, 329.63])
@@ -81,65 +135,61 @@ def generisi_muziku(trajanje):
         t_arr = np.asarray(t)
         idx = np.floor(t_arr * 2.5).astype(int) % len(note)
         freq = note[idx]
-        val = 0.04 * np.sin(2 * np.pi * freq * t_arr) * np.exp(-3 * (t_arr % 0.4))
+        val = 0.035 * np.sin(2 * np.pi * freq * t_arr) * np.exp(-3 * (t_arr % 0.4))
         if t_arr.ndim == 0:
             return np.array([val, val])
         return np.column_stack([val, val])
     return AudioClip(make_frame, duration=trajanje, fps=44100)
 
+pripremi_grafiku_scene()
+pripremi_likove()
+
 with open("prica.txt", "r", encoding="utf-8") as f:
     linije = [l.strip() for l in f if l.strip()]
 
-kreiraj_pozadinu()
-kreiraj_lika()
+klipovi = []
+ukupno_vrijeme = 0
 
-intro = kreiraj_karticu("KIDSTOON STUDIO", NASLOV_EPIZODE, (45, 110, 210), "temp_intro.png", 3.5)
-klipovi = [intro]
+for i, linija in enumerate(linije):
+    if linija.startswith("PLAVKO:"):
+        govornik = "PLAVKO"
+        tekst = linija.replace("PLAVKO:", "").strip()
+        tld = "com.au" # Drugačiji akcent/boja glasa za drugog lika
+    else:
+        govornik = "ŽUĆO"
+        tekst = linija.replace("ZUCO:", "").strip()
+        tld = "hr"
 
-korak_x = 1350 // max(len(linije), 1)
-
-for i, tekst in enumerate(linije):
     glas_fajl = f"glas_{i}.mp3"
-    gTTS(text=tekst, lang="hr").save(glas_fajl)
+    gTTS(text=tekst, lang="hr", tld=tld).save(glas_fajl)
     
     glas = AudioFileClip(glas_fajl)
-    trajanje = glas.duration + 0.6
+    trajanje = glas.duration + 0.5
     
-    pozadina = ImageClip("pozadina_hd.png").set_duration(trajanje)
-    lik = ImageClip("lik_hd.png").set_duration(trajanje)
-    titl = kreiraj_titl(tekst, trajanje, i)
+    pozadina = ImageClip("pozadina_baza.png").set_duration(trajanje)
     
-    sx = 150 + i * korak_x
-    ex = min(sx + korak_x, 1500)
+    # Oblaci koji kontinuirano klize s lijeva na desno
+    oblaci = ImageClip("oblaci_sloj.png").set_duration(trajanje).set_position(
+        lambda t, offset=ukupno_vrijeme: (int(((offset + t) * 35) % 600 - 200), 60)
+    )
     
-    def kretanje(t, sx=sx, ex=ex, d=trajanje):
-        napredak = t / d
-        x = int(sx + (ex - sx) * napredak)
-        y = int(580 - abs(math.sin(t * 6)) * 45)
-        return (x, y)
-        
-    animirani_lik = lik.set_position(kretanje)
-    kompozicija = CompositeVideoClip([pozadina, animirani_lik, titl]).set_audio(glas)
+    zuco_klip = animiraj_lika_klip("zuco", govornik == "ŽUĆO", trajanje, 320, 560)
+    plavko_klip = animiraj_lika_klip("plavko", govornik == "PLAVKO", trajanje, 1260, 560)
+    titl = kreiraj_titl(govornik, tekst, trajanje, i)
+    
+    kompozicija = CompositeVideoClip([pozadina, oblaci, zuco_klip, plavko_klip, titl]).set_audio(glas)
     klipovi.append(kompozicija)
-
-outro = kreiraj_karticu("HVALA NA GLEDANJU!", "Pretplatite se za nove avanture", (40, 160, 90), "temp_outro.png", 3.5)
-klipovi.append(outro)
+    ukupno_vrijeme += trajanje
 
 finalni_video = concatenate_videoclips(klipovi, method="compose")
 muzika = generisi_muziku(finalni_video.duration)
+finalni_video = finalni_video.set_audio(CompositeAudioClip([finalni_video.audio, muzika]))
 
-zvukovi = [muzika]
-if finalni_video.audio is not None:
-    zvukovi.insert(0, finalni_video.audio)
-
-finalni_video = finalni_video.set_audio(CompositeAudioClip(zvukovi))
 finalni_video.write_videofile(IZLAZNI_FAJL, fps=FPS, codec="libx264", audio_codec="aac", threads=4)
 
 for i in range(len(linije)):
-    if os.path.exists(f"glas_{i}.mp3"): os.remove(f"glas_{i}.mp3")
-    if os.path.exists(f"temp_titl_{i}.png"): os.remove(f"temp_titl_{i}.png")
-for tmp in ["temp_intro.png", "temp_outro.png"]:
-    if os.path.exists(tmp): os.remove(tmp)
+    for f in [f"glas_{i}.mp3", f"temp_titl_{i}.png"]:
+        if os.path.exists(f): os.remove(f)
 
 download_dir = os.path.expanduser("~/storage/shared/Download")
 if os.path.exists(download_dir):
