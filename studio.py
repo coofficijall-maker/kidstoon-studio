@@ -1,5 +1,6 @@
 import os
 import math
+import shutil
 import numpy as np
 from gtts import gTTS
 from PIL import Image, ImageDraw, ImageFont
@@ -8,6 +9,29 @@ from moviepy.audio.AudioClip import AudioClip
 
 WIDTH, HEIGHT = 1920, 1080
 FPS = 30
+NASLOV_EPIZODE = "EPIZODA 02: UČIMO BROJEVE"
+IZLAZNI_FAJL = "Epizoda_02_FullHD.mp4"
+
+def ucitaj_font(velicina):
+    for putanja in ["/system/fonts/Roboto-Bold.ttf", "/system/fonts/DroidSans-Bold.ttf"]:
+        if os.path.exists(putanja):
+            return ImageFont.truetype(putanja, velicina)
+    return ImageFont.load_default()
+
+def kreiraj_karticu(naslov, podnaslov, boja_pozadine, fajl, trajanje=3.5):
+    img = Image.new("RGB", (WIDTH, HEIGHT), boja_pozadine)
+    draw = ImageDraw.Draw(img)
+    f_veliki = ucitaj_font(90)
+    f_mali = ucitaj_font(48)
+    
+    b1 = draw.textbbox((0, 0), naslov, font=f_veliki)
+    draw.text(((WIDTH - (b1[2] - b1[0])) // 2, HEIGHT // 2 - 90), naslov, font=f_veliki, fill=(255, 255, 255))
+    
+    b2 = draw.textbbox((0, 0), podnaslov, font=f_mali)
+    draw.text(((WIDTH - (b2[2] - b2[0])) // 2, HEIGHT // 2 + 40), podnaslov, font=f_mali, fill=(255, 230, 80))
+    
+    img.save(fajl)
+    return ImageClip(fajl).set_duration(trajanje).fadein(0.5).fadeout(0.5)
 
 def kreiraj_pozadinu(putanja="pozadina_hd.png"):
     img = Image.new("RGB", (WIDTH, HEIGHT), (115, 205, 255))
@@ -38,21 +62,15 @@ def kreiraj_lika(putanja="lik_hd.png"):
 def kreiraj_titl(tekst, trajanje, indeks):
     img = Image.new("RGBA", (WIDTH, 200), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    try:
-        font = ImageFont.truetype("/system/fonts/Roboto-Bold.ttf", 54)
-    except:
-        font = ImageFont.load_default()
-    
+    font = ucitaj_font(52)
     bbox = draw.textbbox((0, 0), tekst, font=font)
     tw = bbox[2] - bbox[0]
     x = (WIDTH - tw) // 2
     y = 50
-    
     for dx in [-3, 0, 3]:
         for dy in [-3, 0, 3]:
             draw.text((x+dx, y+dy), tekst, font=font, fill=(0, 0, 0, 255))
     draw.text((x, y), tekst, font=font, fill=(255, 255, 255, 255))
-    
     titl_path = f"temp_titl_{indeks}.png"
     img.save(titl_path)
     return ImageClip(titl_path).set_duration(trajanje).set_position(("center", HEIGHT - 220))
@@ -69,29 +87,31 @@ def generisi_muziku(trajanje):
         return np.column_stack([val, val])
     return AudioClip(make_frame, duration=trajanje, fps=44100)
 
-scenario = [
-    {"tekst": "Zdravo drugari! Dobrodošli u našu čarobnu šumu učenja.", "start_x": 150, "end_x": 450},
-    {"tekst": "Danas ćemo naučiti kako sunce pomaže cvijeću i drveću da rastu.", "start_x": 450, "end_x": 950},
-    {"tekst": "Kada sija toplo sunce i padne malo kiše, priroda postaje zelena!", "start_x": 950, "end_x": 1350},
-    {"tekst": "Hvala što ste gledali! Vidimo se u sljedećoj avanturi!", "start_x": 1350, "end_x": 1500}
-]
+with open("prica.txt", "r", encoding="utf-8") as f:
+    linije = [l.strip() for l in f if l.strip()]
 
 kreiraj_pozadinu()
 kreiraj_lika()
 
-klipovi = []
-for i, scena in enumerate(scenario):
+intro = kreiraj_karticu("KIDSTOON STUDIO", NASLOV_EPIZODE, (45, 110, 210), "temp_intro.png", 3.5)
+klipovi = [intro]
+
+korak_x = 1350 // max(len(linije), 1)
+
+for i, tekst in enumerate(linije):
     glas_fajl = f"glas_{i}.mp3"
-    gTTS(text=scena["tekst"], lang="hr").save(glas_fajl)
+    gTTS(text=tekst, lang="hr").save(glas_fajl)
     
     glas = AudioFileClip(glas_fajl)
     trajanje = glas.duration + 0.6
     
     pozadina = ImageClip("pozadina_hd.png").set_duration(trajanje)
     lik = ImageClip("lik_hd.png").set_duration(trajanje)
-    titl = kreiraj_titl(scena["tekst"], trajanje, i)
+    titl = kreiraj_titl(tekst, trajanje, i)
     
-    sx, ex = scena["start_x"], scena["end_x"]
+    sx = 150 + i * korak_x
+    ex = min(sx + korak_x, 1500)
+    
     def kretanje(t, sx=sx, ex=ex, d=trajanje):
         napredak = t / d
         x = int(sx + (ex - sx) * napredak)
@@ -102,14 +122,25 @@ for i, scena in enumerate(scenario):
     kompozicija = CompositeVideoClip([pozadina, animirani_lik, titl]).set_audio(glas)
     klipovi.append(kompozicija)
 
+outro = kreiraj_karticu("HVALA NA GLEDANJU!", "Pretplatite se za nove avanture", (40, 160, 90), "temp_outro.png", 3.5)
+klipovi.append(outro)
+
 finalni_video = concatenate_videoclips(klipovi, method="compose")
 muzika = generisi_muziku(finalni_video.duration)
-finalni_zvuk = CompositeAudioClip([finalni_video.audio, muzika])
-finalni_video = finalni_video.set_audio(finalni_zvuk)
 
-izlazni_fajl = "Epizoda_01_FullHD.mp4"
-finalni_video.write_videofile(izlazni_fajl, fps=FPS, codec="libx264", audio_codec="aac", threads=4)
+zvukovi = [muzika]
+if finalni_video.audio is not None:
+    zvukovi.insert(0, finalni_video.audio)
 
-for i in range(len(scenario)):
+finalni_video = finalni_video.set_audio(CompositeAudioClip(zvukovi))
+finalni_video.write_videofile(IZLAZNI_FAJL, fps=FPS, codec="libx264", audio_codec="aac", threads=4)
+
+for i in range(len(linije)):
     if os.path.exists(f"glas_{i}.mp3"): os.remove(f"glas_{i}.mp3")
     if os.path.exists(f"temp_titl_{i}.png"): os.remove(f"temp_titl_{i}.png")
+for tmp in ["temp_intro.png", "temp_outro.png"]:
+    if os.path.exists(tmp): os.remove(tmp)
+
+download_dir = os.path.expanduser("~/storage/shared/Download")
+if os.path.exists(download_dir):
+    shutil.copy(IZLAZNI_FAJL, download_dir)
