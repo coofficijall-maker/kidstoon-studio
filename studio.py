@@ -111,7 +111,7 @@ def kreiraj_titl(ime_lika, tekst, trajanje, indeks):
     font = ucitaj_font(48)
     puni_tekst = f"{ime_lika}: {tekst}"
     bbox = draw.textbbox((0, 0), puni_tekst, font=font)
-    x = (WIDTH - (bbox - bbox)) // 2
+    x = (WIDTH - (bbox[2] - bbox[0])) // 2
     y = 50
     for dx in [-3, 0, 3]:
         for dy in [-3, 0, 3]:
@@ -120,7 +120,7 @@ def kreiraj_titl(ime_lika, tekst, trajanje, indeks):
     draw.text((x, y), puni_tekst, font=font, fill=boja)
     titl_path = f"temp_titl_{indeks}.png"
     img.save(titl_path)
-    return ImageClip(titl_path).set_duration(trajanje).set_position(("center", HEIGHT - 200))
+    return ImageClip(titl_path).set_duration(trajanje).set_position(("center", HEIGHT - 160))
 
 # --- 2. ZVUČNI EFEKTI (POP SFX) I MUZIKA ---
 def generisi_pop_sfx():
@@ -181,8 +181,8 @@ for i, linija in enumerate(linije):
     )
     rekvizit = ImageClip(f"jabuke_{broj_jabuka}.png").set_duration(trajanje)
     
-    zuco_klip = animiraj_lika_klip("zuco", govornik == "ŽUĆO", trajanje, 260, 560)
-    plavko_klip = animiraj_lika_klip("plavko", govornik == "PLAVKO", trajanje, 1320, 560)
+    zuco_klip = animiraj_lika_klip("zuco", govornik == "ŽUĆO", trajanje, 240, 490)
+    plavko_klip = animiraj_lika_klip("plavko", govornik == "PLAVKO", trajanje, 1340, 490)
     titl = kreiraj_titl(govornik, tekst, trajanje, i)
     
     zvuk_scene = [glas]
