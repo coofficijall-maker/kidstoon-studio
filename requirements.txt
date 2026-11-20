@@ -1,0 +1,16 @@
+certifi==2026.10.23
+charset-normalizer==3.5.2
+click==8.1.8
+decorator==4.4.2
+gTTS==2.5.4
+idna==3.20
+ImageIO==2.38.2
+imageio-ffmpeg==0.8.1
+moviepy==1.0.3
+numpy @ file:///home/builder/.termux-build/python-numpy/src/dist/numpy-2.5.5-cp314-cp314-android_aarch64.whl#sha256=6fdba6fed19704138d4b7d218b2ffddfbe4de138f34595dd41f35d71c6591511
+pillow==11.3.0
+proglog==0.1.12
+python-dotenv==1.2.4
+requests==2.34.2
+tqdm==4.70.1
+urllib3==2.8.0
