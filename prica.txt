@@ -1,4 +1,5 @@
-ZUCO: Zdravo Plavko! Pogledaj kako je danas lijep i sunčan dan!
-PLAVKO: Zdravo Žućo! Baš jeste! Oblaci polako plove po nebu.
-ZUCO: Hajde da zajedno izbrojimo koliko jabuka ima na drvetu!
-PLAVKO: Odlična ideja! Djeco, pomozite nam da brojimo zajedno!
+ZUCO: [JABUKE:0] Zdravo drugari! Danas ćemo brojati jabuke na našem čarobnom drvetu!
+PLAVKO: [JABUKE:1] Pogledajte! Pojavila se prva crvena jabuka! Jedan!
+ZUCO: [JABUKE:2] Evo i druge jabuke! Sada ih imamo dvije!
+PLAVKO: [JABUKE:3] Stigla je i treća! Jedan, dva, tri! Bravo drugari!
+ZUCO: [JABUKE:3] Hvala što ste brojali s nama! Vidimo se u sljedećoj epizodi!
