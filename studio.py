@@ -118,7 +118,7 @@ def kreiraj_titl(ime_lika, tekst, trajanje, indeks):
     font = ucitaj_font(48)
     puni_tekst = f"{ime_lika}: {tekst}"
     bbox = draw.textbbox((0, 0), puni_tekst, font=font)
-    x = (WIDTH - (bbox - bbox)) // 2
+    x = (WIDTH - (bbox[2] - bbox[0])) // 2
     y = 50
     for dx in [-3, 0, 3]:
         for dy in [-3, 0, 3]:
